@@ -54,7 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { hash } = req.params;
       
-      if (!hash || hash.length !== 64) {
+      if (!hash || hash.length !== 64 || !/^[a-f0-9]{64}$/i.test(hash)) {
         return res.status(400).json({ error: "Invalid hash format" });
       }
 
@@ -70,7 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { hash } = req.body;
       
-      if (!hash || typeof hash !== 'string' || hash.length !== 64) {
+      if (!hash || typeof hash !== 'string' || hash.length !== 64 || !/^[a-f0-9]{64}$/i.test(hash)) {
         return res.status(400).json({ error: "Invalid hash format" });
       }
 
