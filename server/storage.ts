@@ -79,6 +79,10 @@ export class MemStorage implements IStorage {
       ...insertDocument,
       id,
       createdAt: new Date(),
+      description: insertDocument.description ?? null,
+      ipfsHash: insertDocument.ipfsHash ?? null,
+      isPublic: insertDocument.isPublic ?? null,
+      isRevoked: insertDocument.isRevoked ?? null,
     };
     this.documents.set(id, document);
     return document;
@@ -121,6 +125,7 @@ export class MemStorage implements IStorage {
       ...insertVerification,
       id,
       verifiedAt: new Date(),
+      verifierAddress: insertVerification.verifierAddress ?? null,
     };
     this.verifications.set(id, verification);
     return verification;

@@ -121,7 +121,7 @@ export function DocumentUpload() {
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
-      const mockEvent = { target: { files: [file] } } as React.ChangeEvent<HTMLInputElement>;
+      const mockEvent = { target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>;
       handleFileUpload(mockEvent);
     }
   };
