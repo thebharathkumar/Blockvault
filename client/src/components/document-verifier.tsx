@@ -1,0 +1,250 @@
+import React, { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Search, Upload, CheckCircle, XCircle, AlertTriangle, ExternalLink, Download } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { generateDocumentHash, validateHash } from "@/lib/crypto";
+import { apiRequest } from "@/lib/queryClient";
+import type { VerificationResult } from "@shared/schema";
+
+export function DocumentVerifier() {
+  const [hashInput, setHashInput] = useState("");
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+  const { toast } = useToast();
+
+  const verifyMutation = useMutation({
+    mutationFn: async (hash: string) => {
+      const response = await apiRequest("POST", "/api/verify", { hash });
+      return response.json();
+    },
+    onSuccess: (data: VerificationResult) => {
+      setVerificationResult(data);
+      toast({
+        title: "Verification Complete",
+        description: data.exists ? "Document found on blockchain" : "Document not found",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Verification Failed",
+        description: error.message || "Failed to verify document",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileVerification = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const hash = await generateDocumentHash(file);
+      verifyMutation.mutate(hash);
+    } catch (error) {
+      toast({
+        title: "Processing Failed",
+        description: "Failed to process the uploaded file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleHashVerification = () => {
+    if (!hashInput.trim()) {
+      toast({
+        title: "Invalid Input",
+        description: "Please enter a document hash",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validateHash(hashInput.trim())) {
+      toast({
+        title: "Invalid Hash",
+        description: "Please enter a valid 64-character SHA-256 hash",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    verifyMutation.mutate(hashInput.trim());
+  };
+
+  const renderVerificationResult = () => {
+    if (!verificationResult) return null;
+
+    if (!verificationResult.exists) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4" data-testid="verification-not-found">
+          <div className="flex items-center mb-3">
+            <XCircle className="text-error text-xl mr-3" />
+            <h4 className="font-semibold text-gray-900">Document Not Found</h4>
+          </div>
+          <p className="text-sm text-gray-600">
+            This document was not found on the blockchain. It may not be registered or the file has been modified.
+          </p>
+        </div>
+      );
+    }
+
+    if (verificationResult.document?.isRevoked) {
+      return (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4" data-testid="verification-revoked">
+          <div className="flex items-center mb-3">
+            <AlertTriangle className="text-warning text-xl mr-3" />
+            <h4 className="font-semibold text-gray-900">Document Revoked</h4>
+          </div>
+          <div className="space-y-2 text-sm">
+            <p className="text-gray-600">This document has been revoked by the issuer.</p>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Originally registered:</span>
+              <span>{verificationResult.timestamp?.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Issuer:</span>
+              <span className="font-mono text-xs">{verificationResult.issuer}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4" data-testid="verification-valid">
+        <div className="flex items-center mb-3">
+          <CheckCircle className="text-success text-xl mr-3" />
+          <h4 className="font-semibold text-gray-900">Document Verified ✓</h4>
+        </div>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Title:</span>
+            <span className="font-medium">{verificationResult.document?.title}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Issuer:</span>
+            <span className="font-mono text-xs">{verificationResult.issuer}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Registered:</span>
+            <span>{verificationResult.timestamp?.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Status:</span>
+            <span className="text-success font-medium">Valid</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Block:</span>
+            <span>{verificationResult.blockNumber}</span>
+          </div>
+        </div>
+        <div className="mt-4 pt-3 border-t border-green-200 flex space-x-3">
+          <Button
+            variant="outline" 
+            size="sm"
+            className="text-green-700 border-green-300 hover:bg-green-50"
+            data-testid="button-view-explorer"
+          >
+            <ExternalLink className="w-3 h-3 mr-1" />
+            View on Explorer
+          </Button>
+          <Button
+            variant="outline"
+            size="sm" 
+            className="text-green-700 border-green-300 hover:bg-green-50"
+            data-testid="button-download-certificate"
+          >
+            <Download className="w-3 h-3 mr-1" />
+            Download Certificate
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-3">
+          <Search className="text-success" />
+          <span>Verify Document</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="file" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="file" data-testid="tab-upload-file">Upload File</TabsTrigger>
+            <TabsTrigger value="hash" data-testid="tab-enter-hash">Enter Hash</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="file" className="space-y-4">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <Search className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600 mb-3">Upload document to verify authenticity</p>
+              <input
+                type="file"
+                id="verify-upload"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                onChange={handleFileVerification}
+                data-testid="input-verify-upload"
+              />
+              <Button
+                onClick={() => document.getElementById("verify-upload")?.click()}
+                className="bg-success text-white hover:bg-green-700"
+                disabled={verifyMutation.isPending}
+                data-testid="button-choose-verify-file"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Choose File to Verify
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="hash" className="space-y-4">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Document Hash
+                </label>
+                <Input
+                  type="text"
+                  value={hashInput}
+                  onChange={(e) => setHashInput(e.target.value)}
+                  placeholder="Enter SHA-256 hash (64 characters)"
+                  className="font-mono text-sm"
+                  data-testid="input-document-hash"
+                />
+              </div>
+              <Button
+                onClick={handleHashVerification}
+                className="w-full bg-success text-white hover:bg-green-700"
+                disabled={verifyMutation.isPending}
+                data-testid="button-verify-hash"
+              >
+                {verifyMutation.isPending ? "Verifying..." : "Verify Hash"}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Loading State */}
+        {verifyMutation.isPending && (
+          <div className="text-center py-8" data-testid="verification-loading">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-success mx-auto mb-4"></div>
+            <p className="text-gray-600">Verifying on blockchain...</p>
+          </div>
+        )}
+
+        {/* Verification Results */}
+        <div className="mt-6">
+          {renderVerificationResult()}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
