@@ -45,6 +45,7 @@ export function Navigation() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-500">Made by Bharath</span>
             <Button 
               className="bg-primary text-white hover:bg-blue-700"
               data-testid="button-connect-wallet"
