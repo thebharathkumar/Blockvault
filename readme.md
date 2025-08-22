@@ -1,10 +1,12 @@
 # Overview
 
 BlockVault is a blockchain document verification platform that enables users to create tamper-proof digital certificates and verify document authenticity using decentralized technology. The application allows document upload with cryptographic hash generation, blockchain storage, and public verification capabilities.
+<img width="1660" height="941" alt="Screenshot 2025-08-22 at 1 17 38 AM" src="https://github.com/user-attachments/assets/f1a51c6c-e09d-4517-a1da-b4ee4c8cb86c" />
 
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
+<img width="1660" height="939" alt="Screenshot 2025-08-22 at 1 17 52 AM" src="https://github.com/user-attachments/assets/fad28579-2930-46bf-9139-bfd07721a232" />
 
 # System Architecture
 
